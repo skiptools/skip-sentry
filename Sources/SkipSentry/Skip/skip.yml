@@ -1,0 +1,14 @@
+# Configuration file for https://skip.tools project
+#
+# Kotlin dependencies and Gradle build options for this module can be configured here
+
+# this is a transpiled Skip Lite module
+skip:
+  mode: 'transpiled'
+  bridging: true
+
+build:
+  contents:
+    - block: 'dependencies'
+      contents:
+        - 'implementation("io.sentry:sentry-android:8.28.0")'
