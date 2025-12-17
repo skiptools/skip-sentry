@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <application>
+        <!-- https://docs.sentry.io/platforms/android/configuration/manual-init/#manual-initialization -->
+        <!-- otherwise crash: "java.lang.RuntimeException: Unable to get provider io.sentry.android.core.SentryInitProvider: java.lang.IllegalArgumentException: DSN is required. Use empty string or set enabled to false in SentryOptions to disable SDK." -->
+        <meta-data android:name="io.sentry.auto-init" android:value="false" />
+    </application>
+</manifest>

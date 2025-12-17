@@ -1,11 +1,46 @@
 # SkipSentry
 
 This is a [Skip](https://skip.tools) Swift/Kotlin library project that
-abstracts the Sentry [iOS](https://docs.sentry.io/platforms/apple/guides/ios/usage/)
-and [Android](https://docs.sentry.io/platforms/android/) APIs.
+abstracts the
+[Sentry iOS](https://docs.sentry.io/platforms/apple/guides/ios/usage/)
+and
+[Sentry Android](https://docs.sentry.io/platforms/android/usage/)
+SDKs.
 
 It is currently in a primitive state and needs contributions
 to flesh out the capabilities.
+
+## Setup
+
+To include this framework in your project, add the following
+dependency to your `Package.swift` file:
+
+```swift
+let package = Package(
+    name: "my-package",
+    products: [
+        .library(name: "MyProduct", targets: ["MyTarget"]),
+    ],
+    dependencies: [
+        .package(url: "https://source.skip.tools/skip-sentry.git", "0.0.0"..<"2.0.0"),
+    ],
+    targets: [
+        .target(name: "MyTarget", dependencies: [
+            .product(name: "SkipSentry", package: "skip-sentry")
+        ])
+    ]
+)
+```
+
+## Configuration
+
+### Android
+
+Follow the guide at [https://docs.sentry.io/platforms/android/configuration/](https://docs.sentry.io/platforms/android/configuration/).
+
+### iOS
+
+Follow the guide at [https://docs.sentry.io/platforms/apple/configuration/](https://docs.sentry.io/platforms/apple/configuration/).
 
 ## Building
 
