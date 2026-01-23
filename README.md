@@ -1,6 +1,6 @@
 # SkipSentry
 
-This is a [Skip](https://skip.tools) Swift/Kotlin library project that
+This is a [Skip](https://skip.dev) Swift/Kotlin library project that
 abstracts the
 [Sentry iOS](https://docs.sentry.io/platforms/apple/guides/ios/usage/)
 and
@@ -22,7 +22,7 @@ let package = Package(
         .library(name: "MyProduct", targets: ["MyTarget"]),
     ],
     dependencies: [
-        .package(url: "https://source.skip.tools/skip-sentry.git", "0.0.0"..<"2.0.0"),
+        .package(url: "https://source.skip.dev/skip-sentry.git", "0.0.0"..<"2.0.0"),
     ],
     targets: [
         .target(name: "MyTarget", dependencies: [
@@ -45,7 +45,7 @@ Follow the guide at [https://docs.sentry.io/platforms/apple/configuration/](http
 ## Building
 
 This project is a Swift Package Manager module that uses the
-[Skip](https://skip.tools) plugin to transpile Swift into Kotlin.
+[Skip](https://skip.dev) plugin to transpile Swift into Kotlin.
 
 Building the module requires that Skip be installed using
 [Homebrew](https://brew.sh) with `brew install skiptools/skip/skip`.
