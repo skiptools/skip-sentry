@@ -50,17 +50,14 @@ public class SkipSentry {
             options.debug = debug
         }
         #else
-        // SKIP INSERT: SentryAndroid.init(ProcessInfo.processInfo.androidContext) { options: io.sentry.SentryOptions ->
-        // SKIP INSERT:     options.dsn = dsn
-        // SKIP INSERT:     options.isDebug = debug
-        // SKIP INSERT: }
+        initSentryAndroid(dsn: dsn, debug: debug)
         #endif
     }
 
     /// Initialize the Sentry SDK with full configuration.
     ///
     /// - Parameter configure: A closure that receives a `SkipSentryOptions` to configure.
-    public static func start(configure: (SkipSentryOptions) -> Void) {
+    public static func start(configure: @escaping (SkipSentryOptions) -> Void) {
         let opts = SkipSentryOptions()
         configure(opts)
         #if !SKIP
@@ -79,17 +76,7 @@ public class SkipSentry {
             options.enableAppHangTracking = opts.enableAppHangTracking
         }
         #else
-        // SKIP INSERT: SentryAndroid.init(ProcessInfo.processInfo.androidContext) { sentryOpts: io.sentry.SentryOptions ->
-        // SKIP INSERT:     sentryOpts.dsn = opts.dsn
-        // SKIP INSERT:     sentryOpts.isDebug = opts.debug
-        // SKIP INSERT:     opts.environment?.let { sentryOpts.environment = it }
-        // SKIP INSERT:     opts.release?.let { sentryOpts.release = it }
-        // SKIP INSERT:     opts.dist?.let { sentryOpts.dist = it }
-        // SKIP INSERT:     opts.sampleRate?.let { sentryOpts.sampleRate = it }
-        // SKIP INSERT:     sentryOpts.isEnableAutoSessionTracking = opts.enableAutoSessionTracking
-        // SKIP INSERT:     opts.sessionTrackingIntervalMillis?.let { sentryOpts.sessionTrackingIntervalMillis = it.toLong() }
-        // SKIP INSERT:     sentryOpts.isAttachStacktrace = opts.attachStacktrace
-        // SKIP INSERT: }
+        initSentryAndroid(opts: opts)
         #endif
     }
 
@@ -114,11 +101,19 @@ public class SkipSentry {
     // MARK: Capturing Events
 
     /// Capture an error.
+    ///
+    /// On Android, the error is converted to a Java `Throwable` using Skip's
+    /// standard error bridging. If the error is already a `Throwable` (as is the
+    /// case for most transpiled errors), it is used directly. Otherwise, it is
+    /// wrapped with a descriptive message.
     public static func capture(error: Error) {
         #if !SKIP
         SentrySDK.capture(error: error)
         #else
-        // SKIP INSERT: io.sentry.Sentry.captureException(java.lang.RuntimeException(error.description))
+        // In Skip Lite, errors that originate from Java/Kotlin are already Throwable.
+        // For pure Swift errors, we wrap in an Exception with the description.
+        // SKIP INSERT: val throwable: Throwable = if (error is Throwable) error else Exception(error.localizedDescription)
+        // SKIP INSERT: io.sentry.Sentry.captureException(throwable)
         #endif
     }
 
@@ -219,10 +214,6 @@ public class SkipSentry {
     // MARK: Tags and Extras
 
     /// Set a tag on the current scope. Tags are indexed and searchable.
-    ///
-    /// - Parameters:
-    ///   - key: The tag key.
-    ///   - value: The tag value.
     public static func setTag(key: String, value: String) {
         #if !SKIP
         SentrySDK.configureScope { scope in
@@ -234,8 +225,6 @@ public class SkipSentry {
     }
 
     /// Remove a tag from the current scope.
-    ///
-    /// - Parameter key: The tag key to remove.
     public static func removeTag(key: String) {
         #if !SKIP
         SentrySDK.configureScope { scope in
@@ -249,10 +238,6 @@ public class SkipSentry {
     }
 
     /// Set an extra value on the current scope. Extras are not indexed but provide additional context.
-    ///
-    /// - Parameters:
-    ///   - key: The extra key.
-    ///   - value: The extra value.
     public static func setExtra(key: String, value: String) {
         #if !SKIP
         SentrySDK.configureScope { scope in
@@ -290,15 +275,15 @@ public class SkipSentry {
     // MARK: Crash Detection
 
     /// Whether the app crashed during the last run.
-    public static var crashedLastRun: Bool {
+    public static var crashedLastRun: Bool? {
         #if !SKIP
-        SentrySDK.crashedLastRun
+        SentrySDK.lastRunStatus == .didCrash ? true : SentrySDK.lastRunStatus == .didNotCrash ? false : nil
         #else
-        Sentry.isCrashedLastRun() == true
+        Sentry.isCrashedLastRun()
         #endif
     }
 
-    // MARK: Level Conversion Helpers
+    // MARK: - Private Helpers
 
     #if !SKIP
     private static func toiOSLevel(_ level: SkipSentryLevel) -> Sentry.SentryLevel {
@@ -319,6 +304,34 @@ public class SkipSentry {
         case .error: return SentryLevel.ERROR
         case .fatal: return SentryLevel.FATAL
         }
+    }
+
+    /// Convert a Swift Error to a Java Throwable using Skip's standard error bridging.
+    /// In Skip Lite, Error types that originate from Java exceptions are already Throwable.
+    /// For pure Swift errors, we wrap them in an Exception with the error description.
+    /// Initialize SentryAndroid with simple DSN and debug options.
+    /// This is a helper because `SentryAndroid.init` uses a Kotlin keyword
+    /// that cannot be called directly from transpiled Swift.
+    private static func initSentryAndroid(dsn: String?, debug: Bool) {
+        // SKIP INSERT: SentryAndroid.init(ProcessInfo.processInfo.androidContext) { options ->
+        // SKIP INSERT:     options.dsn = dsn
+        // SKIP INSERT:     options.isDebug = debug
+        // SKIP INSERT: }
+    }
+
+    /// Initialize SentryAndroid with full SkipSentryOptions.
+    private static func initSentryAndroid(opts: SkipSentryOptions) {
+        // SKIP INSERT: SentryAndroid.init(ProcessInfo.processInfo.androidContext) { options ->
+        // SKIP INSERT:     options.dsn = opts.dsn
+        // SKIP INSERT:     options.isDebug = opts.debug
+        // SKIP INSERT:     opts.environment?.let { options.environment = it }
+        // SKIP INSERT:     opts.release?.let { options.release = it }
+        // SKIP INSERT:     opts.dist?.let { options.dist = it }
+        // SKIP INSERT:     opts.sampleRate?.let { options.sampleRate = it }
+        // SKIP INSERT:     options.isEnableAutoSessionTracking = opts.enableAutoSessionTracking
+        // SKIP INSERT:     opts.sessionTrackingIntervalMillis?.let { options.sessionTrackingIntervalMillis = it.toLong() }
+        // SKIP INSERT:     options.isAttachStacktrace = opts.attachStacktrace
+        // SKIP INSERT: }
     }
     #endif
 }

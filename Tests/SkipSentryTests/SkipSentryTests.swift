@@ -71,7 +71,7 @@ final class SkipSentryTests: XCTestCase {
             }
 
             let _: Bool = SkipSentry.isEnabled
-            let _: Bool = SkipSentry.crashedLastRun
+            let _: Bool? = SkipSentry.crashedLastRun
 
             SkipSentry.capture(error: NSError(domain: "test", code: 1))
             SkipSentry.capture(message: "Test message")

@@ -238,7 +238,7 @@ All methods are static on the `SkipSentry` class.
 > **Platform-specific differences:**
 > - `enableAppHangTracking` is only available on iOS. It has no effect on Android.
 > - `crashedLastRun` is deprecated on iOS (use `lastRunStatus` via the native SDK for more detail). On Android, returns `null` if unknown, which is treated as `false`.
-> - `capture(error:)` on Android wraps the error in a `RuntimeException` since the Android SDK expects a `Throwable`.
+> - `capture(error:)` on Android converts the error to a Java `Throwable` using Skip's standard error bridging. If the error already originates from a Java/Kotlin exception, it is passed directly. Otherwise, it is wrapped in an `Exception` with the error's `localizedDescription`.
 > - `flush(timeout:)` takes seconds on iOS but milliseconds on Android. The wrapper converts automatically.
 > - The `start()` methods on Android require an Android context (obtained from `ProcessInfo.processInfo.androidContext`), so they cannot be called in Robolectric unit tests.
 
