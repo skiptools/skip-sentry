@@ -12,7 +12,7 @@ let package = Package(
     dependencies: [
         .package(url: "https://source.skip.tools/skip.git", from: "1.0.0"),
         .package(url: "https://source.skip.tools/skip-foundation.git", from: "1.0.0"),
-        .package(url: "https://github.com/getsentry/sentry-cocoa.git", from: "9.0.0"),
+        .package(url: "https://github.com/getsentry/sentry-cocoa.git", from: "9.8.0"),
     ],
     targets: [
         .target(name: "SkipSentry", dependencies: [
