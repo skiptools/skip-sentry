@@ -331,6 +331,7 @@ public class SkipSentry {
         // SKIP INSERT:     options.isEnableAutoSessionTracking = opts.enableAutoSessionTracking
         // SKIP INSERT:     opts.sessionTrackingIntervalMillis?.let { options.sessionTrackingIntervalMillis = it.toLong() }
         // SKIP INSERT:     options.isAttachStacktrace = opts.attachStacktrace
+        // SKIP INSERT:     options.isReportHistoricalTombstones = opts.isReportHistoricalTombstones
         // SKIP INSERT: }
     }
     #endif
@@ -360,6 +361,8 @@ public class SkipSentryOptions {
     public var attachStacktrace: Bool = true
     /// Whether to detect and report app hangs (iOS only).
     public var enableAppHangTracking: Bool = true
+    /// Whether to report tombstones captured before the SDK was initialized (Android 12+ only).
+    public var isReportHistoricalTombstones: Bool = true
 
     public init() { }
 }
