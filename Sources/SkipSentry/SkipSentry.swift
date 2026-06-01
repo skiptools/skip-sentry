@@ -68,6 +68,7 @@ public class SkipSentry {
             if let rel = opts.release { options.releaseName = rel }
             if let dist = opts.dist { options.dist = dist }
             if let rate = opts.sampleRate { options.sampleRate = NSNumber(value: rate) }
+            if let tracesRate = opts.tracesSampleRate { options.tracesSampleRate = NSNumber(value: tracesRate) }
             options.enableAutoSessionTracking = opts.enableAutoSessionTracking
             if let interval = opts.sessionTrackingIntervalMillis {
                 options.sessionTrackingIntervalMillis = UInt(interval)
@@ -163,6 +164,31 @@ public class SkipSentry {
         crumb.message = message
         crumb.category = category
         crumb.level = toKotlinLevel(level)
+        Sentry.addBreadcrumb(crumb)
+        #endif
+    }
+
+    /// Add a breadcrumb with category, level, and structured data.
+    ///
+    /// - Parameters:
+    ///   - message: A short description of the breadcrumb.
+    ///   - category: A dot-separated category string (e.g. `"ui.click"`, `"navigation"`).
+    ///   - level: The severity level.
+    ///   - data: Additional key/value context attached to the breadcrumb.
+    public static func addBreadcrumb(message: String, category: String, level: SkipSentryLevel = .info, data: [String: String]) {
+        #if !SKIP
+        let crumb = Sentry.Breadcrumb(level: toiOSLevel(level), category: category)
+        crumb.message = message
+        crumb.data = data
+        SentrySDK.addBreadcrumb(crumb)
+        #else
+        let crumb = Breadcrumb()
+        crumb.message = message
+        crumb.category = category
+        crumb.level = toKotlinLevel(level)
+        for (key, value) in data {
+            crumb.setData(key, value)
+        }
         Sentry.addBreadcrumb(crumb)
         #endif
     }
@@ -328,6 +354,7 @@ public class SkipSentry {
         // SKIP INSERT:     opts.release?.let { options.release = it }
         // SKIP INSERT:     opts.dist?.let { options.dist = it }
         // SKIP INSERT:     opts.sampleRate?.let { options.sampleRate = it }
+        // SKIP INSERT:     opts.tracesSampleRate?.let { options.tracesSampleRate = it }
         // SKIP INSERT:     options.isEnableAutoSessionTracking = opts.enableAutoSessionTracking
         // SKIP INSERT:     opts.sessionTrackingIntervalMillis?.let { options.sessionTrackingIntervalMillis = it.toLong() }
         // SKIP INSERT:     options.isAttachStacktrace = opts.attachStacktrace
@@ -353,6 +380,10 @@ public class SkipSentryOptions {
     public var dist: String?
     /// Sample rate for error events (0.0 to 1.0). Default sends all events.
     public var sampleRate: Double?
+    /// Sample rate for performance/tracing transactions (0.0 to 1.0). `nil`
+    /// leaves tracing disabled. Mirrors iOS `Options.tracesSampleRate` and
+    /// Android `SentryOptions.tracesSampleRate`.
+    public var tracesSampleRate: Double?
     /// Whether to automatically track sessions.
     public var enableAutoSessionTracking: Bool = true
     /// Session tracking interval in milliseconds.
