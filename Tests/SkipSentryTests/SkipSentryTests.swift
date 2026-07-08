@@ -74,6 +74,7 @@ final class SkipSentryTests: XCTestCase {
             let _: Bool? = SkipSentry.crashedLastRun
 
             SkipSentry.capture(error: NSError(domain: "test", code: 1))
+            SkipSentry.capture(error: NSError(domain: "test", code: 2), fingerprint: "sync-timeout")
             SkipSentry.capture(message: "Test message")
             SkipSentry.capture(message: "Test warning", level: .warning)
 
