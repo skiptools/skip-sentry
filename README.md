@@ -71,6 +71,35 @@ SkipSentry.start { options in
 }
 ```
 
+### Filtering Events Before They're Sent
+
+Use `beforeSend` to inspect each event on-device and decide whether to drop it —
+for example, to filter out expected, non-actionable client-side noise (cancelled
+in-flight requests, transient offline blips, user-cancelled auth sheets) before it
+becomes a Sentry issue. Return the event to send it, or `nil` to drop it.
+
+```swift
+let noise = ["network request failed", "request was cancelled"]
+
+SkipSentry.start { options in
+    options.dsn = "https://examplePublicKey@o0.ingest.sentry.io/0"
+    options.beforeSend = { event in
+        var text = (event.message ?? "").lowercased()
+        for value in event.exceptionValues {
+            text += " " + value.lowercased()
+        }
+        return noise.contains(where: { text.contains($0) }) ? nil : event
+    }
+}
+```
+
+The closure receives a lightweight, read-only `SkipSentryEvent` — a cross-platform
+projection of the native event (its `message`, `level`, and `exceptions`, plus the
+`exceptionValues` convenience). The native event types (`Sentry.Event` on iOS,
+`io.sentry.SentryEvent` on Android) are platform-specific and can't cross the Skip
+bridge, so the hook decides keep-or-drop rather than mutating the event. This mirrors
+iOS `Options.beforeSend` and Android `SentryOptions.setBeforeSend`.
+
 ### Capturing Errors
 
 ```swift
@@ -211,6 +240,7 @@ All methods are static on the `SkipSentry` class.
 | `sessionTrackingIntervalMillis` | `Int?` | `nil` | Session tracking interval (ms) |
 | `attachStacktrace` | `Bool` | `true` | Attach stack traces to events |
 | `enableAppHangTracking` | `Bool` | `true` | Detect app hangs (iOS only) |
+| `beforeSend` | `((SkipSentryEvent) -> SkipSentryEvent?)?` | `nil` | Inspect each event and drop it (return `nil`) or send it (return the event) |
 
 ### SkipSentryLevel
 
