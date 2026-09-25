@@ -21,7 +21,8 @@ let package = Package(
         ], resources: [.process("Resources")], plugins: [.plugin(name: "skipstone", package: "skip")]),
         .testTarget(name: "SkipSentryTests", dependencies: [
             "SkipSentry",
-            .product(name: "SkipTest", package: "skip")
+            .product(name: "SkipTest", package: "skip"),
+            .product(name: "Sentry", package: "sentry-cocoa")
         ], resources: [.process("Resources")], plugins: [.plugin(name: "skipstone", package: "skip")]),
     ]
 )
