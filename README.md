@@ -29,6 +29,18 @@ let package = Package(
 
 Create a [Sentry](https://sentry.io) project and obtain your DSN from **Settings > Projects > [Your Project] > Client Keys (DSN)**.
 
+### Android: disable auto-init
+
+SkipSentry initializes manually via `SkipSentry.start { … }`. The Sentry Android SDK, however, ships a `SentryInitProvider` that **auto-initializes at process start** — before your manual `start` runs. Because the DSN is provided in code (not as manifest metadata), this auto-init aborts the app on launch with `java.lang.IllegalArgumentException: DSN is required`.
+
+Disable it by adding this to your app's `AndroidManifest.xml`, inside `<application>`:
+
+```xml
+<meta-data android:name="io.sentry.auto-init" android:value="false" />
+```
+
+This must live in the **consuming app's** manifest — a `meta-data` entry in this module's manifest does not propagate into the merged app manifest. See Sentry's [manual initialization](https://docs.sentry.io/platforms/android/configuration/manual-init/) docs.
+
 ## Usage
 
 ### Initialization
