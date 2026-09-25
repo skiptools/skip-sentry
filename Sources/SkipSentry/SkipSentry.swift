@@ -106,14 +106,35 @@ public class SkipSentry {
     /// standard error bridging. If the error is already a `Throwable` (as is the
     /// case for most transpiled errors), it is used directly. Otherwise, it is
     /// wrapped with a descriptive message.
-    public static func capture(error: Error) {
+    ///
+    /// - Parameters:
+    ///   - error: The error to report.
+    ///   - fingerprint: Optional stable grouping key. When non-nil, the event is
+    ///     pinned to a dedicated Sentry issue via a single-element fingerprint,
+    ///     so semantically-distinct failures that share a *generic* bridged
+    ///     throwable (e.g. `SwiftJNI.ThrowableError`) get their own issue instead
+    ///     of collapsing together — and repeated occurrences of the same failure
+    ///     stay in one issue instead of fanning out. Mirrors iOS
+    ///     `SentrySDK.capture(error:) { $0.setFingerprint([...]) }` and Android
+    ///     `Sentry.captureException(t) { it.fingerprint = listOf(...) }`.
+    public static func capture(error: Error, fingerprint: String? = nil) {
         #if !SKIP
-        SentrySDK.capture(error: error)
+        if let fingerprint {
+            SentrySDK.capture(error: error) { scope in
+                scope.setFingerprint([fingerprint])
+            }
+        } else {
+            SentrySDK.capture(error: error)
+        }
         #else
         // In Skip Lite, errors that originate from Java/Kotlin are already Throwable.
         // For pure Swift errors, we wrap in an Exception with the description.
         // SKIP INSERT: val throwable: Throwable = if (error is Throwable) error else Exception(error.localizedDescription)
-        // SKIP INSERT: io.sentry.Sentry.captureException(throwable)
+        // SKIP INSERT: if (fingerprint != null) {
+        // SKIP INSERT:     io.sentry.Sentry.captureException(throwable) { scope -> scope.setFingerprint(listOf(fingerprint)) }
+        // SKIP INSERT: } else {
+        // SKIP INSERT:     io.sentry.Sentry.captureException(throwable)
+        // SKIP INSERT: }
         #endif
     }
 
