@@ -93,7 +93,66 @@ final class SkipSentryTests: XCTestCase {
             SkipSentry.flush()
             SkipSentry.flush(timeout: 10.0)
             SkipSentry.close()
+
+            SkipSentry.capture(message: "Decode failed", level: .error, tags: ["code": "42"], extras: ["path": "a/b"], fingerprint: ["decode"])
+            SkipSentry.log("Signed in", level: .info, attributes: ["method": "email"])
+            SkipSentry.count("sign_in", value: 1, attributes: ["method": "email"])
+            SkipSentry.distribution("launch.duration", value: 120.0, unit: "millisecond")
+            SkipSentry.gauge("listeners.active", value: 3.0)
         }
+    }
+
+    func testSkipSentryExtendedOptions() throws {
+        let opts = SkipSentryOptions()
+        XCTAssertNil(opts.tracesSampleRate)
+        XCTAssertFalse(opts.enableLogs)
+        XCTAssertTrue(opts.enableMetrics)
+        XCTAssertNil(opts.tracePropagationTargets)
+        XCTAssertTrue(opts.droppedFailedRequestHosts.isEmpty)
+
+        opts.tracesSampleRate = 0.2
+        opts.enableLogs = true
+        opts.tracePropagationTargets = ["cloudfunctions.net"]
+        opts.droppedFailedRequestHosts = ["cloudfunctions.net"]
+
+        XCTAssertEqual(opts.tracesSampleRate, 0.2)
+        XCTAssertTrue(opts.enableLogs)
+        XCTAssertEqual(opts.tracePropagationTargets, ["cloudfunctions.net"])
+        XCTAssertEqual(opts.droppedFailedRequestHosts, ["cloudfunctions.net"])
+    }
+
+    func testSkipSentryLogLevels() throws {
+        XCTAssertEqual(SkipSentryLogLevel.trace.rawValue, "trace")
+        XCTAssertEqual(SkipSentryLogLevel.warn.rawValue, "warn")
+        XCTAssertEqual(SkipSentryLogLevel.fatal.rawValue, "fatal")
+    }
+
+    func testDroppedFailedRequestMatchesHostAndSubdomains() throws {
+        let hosts = ["cloudfunctions.net"]
+        let url = "https://europe-west1-clubbooking.cloudfunctions.net/trainingManagement"
+        XCTAssertTrue(SkipSentry.isDroppedFailedRequest(exceptionType: "HTTPClientError", requestURL: url, droppedHosts: hosts))
+        XCTAssertTrue(SkipSentry.isDroppedFailedRequest(exceptionType: "SentryHttpClientException", requestURL: url, droppedHosts: hosts))
+        XCTAssertTrue(SkipSentry.isDroppedFailedRequest(
+            exceptionType: "HTTPClientError", requestURL: "https://cloudfunctions.net/x", droppedHosts: hosts
+        ))
+    }
+
+    func testDroppedFailedRequestKeepsOtherEvents() throws {
+        let hosts = ["cloudfunctions.net"]
+        let url = "https://europe-west1-clubbooking.cloudfunctions.net/trainingManagement"
+        // Not a failed-request event.
+        XCTAssertFalse(SkipSentry.isDroppedFailedRequest(exceptionType: "NSError", requestURL: url, droppedHosts: hosts))
+        XCTAssertFalse(SkipSentry.isDroppedFailedRequest(exceptionType: nil, requestURL: url, droppedHosts: hosts))
+        // Other hosts, including look-alikes that only share a suffix string.
+        XCTAssertFalse(SkipSentry.isDroppedFailedRequest(
+            exceptionType: "HTTPClientError", requestURL: "https://api.example.com/x", droppedHosts: hosts
+        ))
+        XCTAssertFalse(SkipSentry.isDroppedFailedRequest(
+            exceptionType: "HTTPClientError", requestURL: "https://evilcloudfunctions.net/x", droppedHosts: hosts
+        ))
+        // Missing or unparsable URL, or no hosts configured.
+        XCTAssertFalse(SkipSentry.isDroppedFailedRequest(exceptionType: "HTTPClientError", requestURL: nil, droppedHosts: hosts))
+        XCTAssertFalse(SkipSentry.isDroppedFailedRequest(exceptionType: "HTTPClientError", requestURL: url, droppedHosts: []))
     }
 
     func testSkipSentryStartWithOptions() throws {

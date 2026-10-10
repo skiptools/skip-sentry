@@ -4,12 +4,14 @@
 import Foundation
 
 #if !SKIP
-import Sentry
+@preconcurrency import Sentry
 #else
 import io.sentry.Sentry
 import io.sentry.SentryEvent
 import io.sentry.SentryLevel
 import io.sentry.Breadcrumb
+import io.sentry.SentryLogLevel
+import io.sentry.metrics.SentryMetricsParameters
 // SKIP INSERT: import io.sentry.protocol.User
 import io.sentry.android.core.SentryAndroid
 import io.sentry.android.core.SentryAndroidOptions
@@ -22,6 +24,16 @@ public enum SkipSentryLevel: String {
     case debug
     case info
     case warning
+    case error
+    case fatal
+}
+
+/// The severity level of a structured Sentry log entry.
+public enum SkipSentryLogLevel: String {
+    case trace
+    case debug
+    case info
+    case warn
     case error
     case fatal
 }
@@ -74,6 +86,20 @@ public class SkipSentry {
             }
             options.attachStacktrace = opts.attachStacktrace
             options.enableAppHangTracking = opts.enableAppHangTracking
+            if let rate = opts.tracesSampleRate { options.tracesSampleRate = NSNumber(value: rate) }
+            options.enableLogs = opts.enableLogs
+            options.enableMetrics = opts.enableMetrics
+            if let targets = opts.tracePropagationTargets { options.tracePropagationTargets = targets }
+            let droppedHosts = opts.droppedFailedRequestHosts
+            if !droppedHosts.isEmpty {
+                options.beforeSend = { event in
+                    isDroppedFailedRequest(
+                        exceptionType: event.exceptions?.first?.type,
+                        requestURL: event.request?.url,
+                        droppedHosts: droppedHosts
+                    ) ? nil : event
+                }
+            }
         }
         #else
         initSentryAndroid(opts: opts)
@@ -128,6 +154,147 @@ public class SkipSentry {
         #else
         let _ = Sentry.captureMessage(message, toKotlinLevel(level))
         #endif
+    }
+
+    /// Capture a message event with per-event tags, extras and an explicit grouping fingerprint.
+    ///
+    /// - Parameters:
+    ///   - message: The event message. Keep it free of dynamic values so events group together.
+    ///   - level: The severity level.
+    ///   - tags: Indexed, searchable key/values (keep them low-cardinality).
+    ///   - extras: Non-indexed key/values shown on the event.
+    ///   - fingerprint: Grouping fingerprint. Empty keeps Sentry's default grouping.
+    public static func capture(
+        message: String,
+        level: SkipSentryLevel,
+        tags: [String: String],
+        extras: [String: String],
+        fingerprint: [String]
+    ) {
+        #if !SKIP
+        let event = Sentry.Event(level: toiOSLevel(level))
+        event.message = SentryMessage(formatted: message)
+        event.tags = tags
+        event.extra = extras
+        if !fingerprint.isEmpty { event.fingerprint = fingerprint }
+        SentrySDK.capture(event: event)
+        #else
+        let kotlinLevel = toKotlinLevel(level)
+        let hasFingerprint = !fingerprint.isEmpty
+        // SKIP INSERT: val evt = io.sentry.SentryEvent()
+        // SKIP INSERT: val msg = io.sentry.protocol.Message()
+        // SKIP INSERT: msg.formatted = message
+        // SKIP INSERT: evt.message = msg
+        // SKIP INSERT: evt.level = kotlinLevel
+        // SKIP INSERT: for ((k, v) in tags.kotlin(nocopy = true)) { evt.setTag(k as String, v as String) }
+        // SKIP INSERT: for ((k, v) in extras.kotlin(nocopy = true)) { evt.setExtra(k as String, v as String) }
+        // SKIP INSERT: if (hasFingerprint) { evt.fingerprints = fingerprint.kotlin(nocopy = true).map { it as String } }
+        // SKIP INSERT: io.sentry.Sentry.captureEvent(evt)
+        #endif
+    }
+
+    // MARK: Logs
+
+    /// Send a structured log entry to Sentry Logs.
+    ///
+    /// No-op unless ``SkipSentryOptions/enableLogs`` was set at start.
+    ///
+    /// - Parameters:
+    ///   - message: The log body.
+    ///   - level: The log severity.
+    ///   - attributes: Searchable key/values attached to the log entry.
+    public static func log(_ message: String, level: SkipSentryLogLevel, attributes: [String: String] = [:]) {
+        #if !SKIP
+        let attrs: [String: Any] = attributes
+        let logger = SentrySDK.logger
+        switch level {
+        case .trace: logger.trace(message, attributes: attrs)
+        case .debug: logger.debug(message, attributes: attrs)
+        case .info: logger.info(message, attributes: attrs)
+        case .warn: logger.warn(message, attributes: attrs)
+        case .error: logger.error(message, attributes: attrs)
+        case .fatal: logger.fatal(message, attributes: attrs)
+        }
+        #else
+        let kotlinLevel = toKotlinLogLevel(level)
+        // SKIP INSERT: val map = java.util.HashMap<String, Any>()
+        // SKIP INSERT: for ((k, v) in attributes.kotlin(nocopy = true)) { map[k as String] = v as String }
+        // SKIP INSERT: val params = io.sentry.logger.SentryLogParameters.create(io.sentry.SentryAttributes.fromMap(map))
+        // SKIP INSERT: io.sentry.Sentry.logger().log(kotlinLevel, params, message)
+        #endif
+    }
+
+    // MARK: Metrics
+
+    /// Increment a counter metric.
+    ///
+    /// - Parameters:
+    ///   - key: The metric name.
+    ///   - value: The amount to add. Negative values are clamped to 0.
+    ///   - attributes: Key/values to slice the metric by.
+    public static func count(_ key: String, value: Int = 1, attributes: [String: String] = [:]) {
+        let amount = max(0, value)
+        #if !SKIP
+        SentrySDK.metrics.count(key: key, value: UInt(amount), attributes: nativeAttributes(attributes))
+        #else
+        let doubleAmount = Double(amount)
+        // SKIP INSERT: io.sentry.Sentry.metrics().count(key, doubleAmount, null, metricParameters(attributes))
+        #endif
+    }
+
+    /// Record one sample of a distribution metric.
+    ///
+    /// - Parameters:
+    ///   - key: The metric name.
+    ///   - value: The sample value.
+    ///   - unit: A Sentry unit name such as `"millisecond"` or `"byte"`; `nil` for unitless.
+    ///   - attributes: Key/values to slice the metric by.
+    public static func distribution(_ key: String, value: Double, unit: String? = nil, attributes: [String: String] = [:]) {
+        #if !SKIP
+        SentrySDK.metrics.distribution(
+            key: key,
+            value: value,
+            unit: unit.flatMap { SentryUnit(rawValue: $0) },
+            attributes: nativeAttributes(attributes)
+        )
+        #else
+        // SKIP INSERT: io.sentry.Sentry.metrics().distribution(key, value, unit, metricParameters(attributes))
+        #endif
+    }
+
+    /// Record the current value of a gauge metric.
+    ///
+    /// - Parameters:
+    ///   - key: The metric name.
+    ///   - value: The current value.
+    ///   - unit: A Sentry unit name such as `"millisecond"` or `"byte"`; `nil` for unitless.
+    ///   - attributes: Key/values to slice the metric by.
+    public static func gauge(_ key: String, value: Double, unit: String? = nil, attributes: [String: String] = [:]) {
+        #if !SKIP
+        SentrySDK.metrics.gauge(
+            key: key,
+            value: value,
+            unit: unit.flatMap { SentryUnit(rawValue: $0) },
+            attributes: nativeAttributes(attributes)
+        )
+        #else
+        // SKIP INSERT: io.sentry.Sentry.metrics().gauge(key, value, unit, metricParameters(attributes))
+        #endif
+    }
+
+    // MARK: Failed-request filtering
+
+    /// Exception types the SDKs give their automatic failed-HTTP-request events
+    /// (`SentryNetworkTracker` on iOS, the OkHttp integration on Android).
+    static let failedRequestExceptionTypes: Set<String> = ["HTTPClientError", "SentryHttpClientException"]
+
+    /// Whether an event is an automatic failed-request report for one of `droppedHosts` (or a subdomain).
+    static func isDroppedFailedRequest(exceptionType: String?, requestURL: String?, droppedHosts: [String]) -> Bool {
+        guard let exceptionType, failedRequestExceptionTypes.contains(exceptionType),
+              let requestURL, let host = URL(string: requestURL)?.host else {
+            return false
+        }
+        return droppedHosts.contains { host == $0 || host.hasSuffix("." + $0) }
     }
 
     // MARK: Breadcrumbs
@@ -295,7 +462,30 @@ public class SkipSentry {
         case .fatal: return .fatal
         }
     }
+
+    private static func nativeAttributes(_ attributes: [String: String]) -> [String: SentryAttributeValue] {
+        var result: [String: SentryAttributeValue] = [:]
+        for (key, value) in attributes { result[key] = value }
+        return result
+    }
     #else
+    private static func toKotlinLogLevel(_ level: SkipSentryLogLevel) -> SentryLogLevel {
+        switch level {
+        case .trace: return SentryLogLevel.TRACE
+        case .debug: return SentryLogLevel.DEBUG
+        case .info: return SentryLogLevel.INFO
+        case .warn: return SentryLogLevel.WARN
+        case .error: return SentryLogLevel.ERROR
+        case .fatal: return SentryLogLevel.FATAL
+        }
+    }
+
+    private static func metricParameters(_ attributes: [String: String]) -> SentryMetricsParameters {
+        // SKIP INSERT: val map = java.util.HashMap<String, Any>()
+        // SKIP INSERT: for ((k, v) in attributes.kotlin(nocopy = true)) { map[k as String] = v as String }
+        // SKIP INSERT: return io.sentry.metrics.SentryMetricsParameters.create(io.sentry.SentryAttributes.fromMap(map))
+    }
+
     private static func toKotlinLevel(_ level: SkipSentryLevel) -> SentryLevel {
         switch level {
         case .debug: return SentryLevel.DEBUG
@@ -321,6 +511,8 @@ public class SkipSentry {
 
     /// Initialize SentryAndroid with full SkipSentryOptions.
     private static func initSentryAndroid(opts: SkipSentryOptions) {
+        let droppedHosts = opts.droppedFailedRequestHosts
+        let hasDroppedHosts = !droppedHosts.isEmpty
         // SKIP INSERT: SentryAndroid.init(ProcessInfo.processInfo.androidContext) { options ->
         // SKIP INSERT:     options.dsn = opts.dsn
         // SKIP INSERT:     options.isDebug = opts.debug
@@ -332,6 +524,15 @@ public class SkipSentry {
         // SKIP INSERT:     opts.sessionTrackingIntervalMillis?.let { options.sessionTrackingIntervalMillis = it.toLong() }
         // SKIP INSERT:     options.isAttachStacktrace = opts.attachStacktrace
         // SKIP INSERT:     options.isReportHistoricalTombstones = opts.isReportHistoricalTombstones
+        // SKIP INSERT:     opts.tracesSampleRate?.let { options.tracesSampleRate = it }
+        // SKIP INSERT:     options.logs.isEnabled = opts.enableLogs
+        // SKIP INSERT:     options.metrics.isEnabled = opts.enableMetrics
+        // SKIP INSERT:     opts.tracePropagationTargets?.let { options.setTracePropagationTargets(it.kotlin(nocopy = true).map { t -> t as String }) }
+        // SKIP INSERT:     if (hasDroppedHosts) {
+        // SKIP INSERT:         options.beforeSend = io.sentry.SentryOptions.BeforeSendCallback { event, _ ->
+        // SKIP INSERT:             if (isDroppedFailedRequest(event.exceptions?.firstOrNull()?.type, event.request?.url, droppedHosts)) null else event
+        // SKIP INSERT:         }
+        // SKIP INSERT:     }
         // SKIP INSERT: }
     }
     #endif
@@ -363,6 +564,20 @@ public class SkipSentryOptions {
     public var enableAppHangTracking: Bool = true
     /// Whether to report tombstones captured before the SDK was initialized (Android 12+ only).
     public var isReportHistoricalTombstones: Bool = true
+    /// Sample rate for performance traces (0.0 to 1.0). `nil` disables tracing.
+    public var tracesSampleRate: Double?
+    /// Whether to send structured logs (``SkipSentry/log(_:level:attributes:)``) to Sentry.
+    public var enableLogs: Bool = false
+    /// Whether to send metrics (``SkipSentry/count(_:value:attributes:)`` and friends) to Sentry.
+    public var enableMetrics: Bool = true
+    /// URLs (substring or regex) that receive `sentry-trace` / `baggage` headers. `nil` keeps the SDK default.
+    public var tracePropagationTargets: [String]?
+    /// Hosts whose automatic failed-HTTP-request events are dropped before sending.
+    ///
+    /// Matches the host itself and any subdomain, so `"cloudfunctions.net"` also drops
+    /// `europe-west1-project.cloudfunctions.net`. Use for endpoints whose failures the app
+    /// already reports itself, so Sentry doesn't receive a second, unstructured copy.
+    public var droppedFailedRequestHosts: [String] = []
 
     public init() { }
 }
