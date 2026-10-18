@@ -49,6 +49,7 @@ final class SkipSentryTests: XCTestCase {
         XCTAssertNil(opts.sessionTrackingIntervalMillis)
         XCTAssertTrue(opts.attachStacktrace)
         XCTAssertTrue(opts.enableAppHangTracking)
+        XCTAssertTrue(opts.enableNetworkBreadcrumbs)
 
         opts.dsn = "https://key@sentry.io/123"
         opts.debug = true
@@ -60,6 +61,7 @@ final class SkipSentryTests: XCTestCase {
         opts.sessionTrackingIntervalMillis = 30000
         opts.attachStacktrace = false
         opts.enableAppHangTracking = false
+        opts.enableNetworkBreadcrumbs = false
         XCTAssertNil(opts.beforeSend)
 
         XCTAssertEqual(opts.dsn, "https://key@sentry.io/123")
@@ -68,6 +70,7 @@ final class SkipSentryTests: XCTestCase {
         XCTAssertEqual(opts.release, "1.0.0")
         XCTAssertEqual(opts.sampleRate, 0.5)
         XCTAssertFalse(opts.enableAutoSessionTracking)
+        XCTAssertFalse(opts.enableNetworkBreadcrumbs)
     }
 
     func testSkipSentryAPICompilation() throws {

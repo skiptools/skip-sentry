@@ -80,6 +80,7 @@ SkipSentry.start { options in
     options.sessionTrackingIntervalMillis = 30000
     options.attachStacktrace = true
     options.enableAppHangTracking = true         // iOS only
+    options.enableNetworkBreadcrumbs = true      // iOS only
 }
 ```
 
@@ -252,6 +253,7 @@ All methods are static on the `SkipSentry` class.
 | `sessionTrackingIntervalMillis` | `Int?` | `nil` | Session tracking interval (ms) |
 | `attachStacktrace` | `Bool` | `true` | Attach stack traces to events |
 | `enableAppHangTracking` | `Bool` | `true` | Detect app hangs (iOS only) |
+| `enableNetworkBreadcrumbs` | `Bool` | `true` | Record a breadcrumb, with its URL, for each HTTP request (iOS only) |
 | `beforeSend` | `((SkipSentryEvent) -> SkipSentryEvent?)?` | `nil` | Inspect each event and drop it (return `nil`) or send it (return the event) |
 
 ### SkipSentryLevel
@@ -279,6 +281,7 @@ All methods are static on the `SkipSentry` class.
 > [!NOTE]
 > **Platform-specific differences:**
 > - `enableAppHangTracking` is only available on iOS. It has no effect on Android.
+> - `enableNetworkBreadcrumbs` is only available on iOS. Android's SDK records request breadcrumbs only through its OkHttp integration, which this wrapper doesn't install, so it has no effect there. Turn it off when request URLs can carry keys or tokens: `beforeSend` can drop an event but can't remove a breadcrumb from it.
 > - `crashedLastRun` is deprecated on iOS (use `lastRunStatus` via the native SDK for more detail). On Android, returns `null` if unknown, which is treated as `false`.
 > - `capture(error:)` on Android converts the error to a Java `Throwable` using Skip's standard error bridging. If the error already originates from a Java/Kotlin exception, it is passed directly. Otherwise, it is wrapped in an `Exception` with the error's `localizedDescription`.
 > - `flush(timeout:)` takes seconds on iOS but milliseconds on Android. The wrapper converts automatically.

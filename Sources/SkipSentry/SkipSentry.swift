@@ -90,6 +90,7 @@ public class SkipSentry {
             }
             options.attachStacktrace = opts.attachStacktrace
             options.enableAppHangTracking = opts.enableAppHangTracking
+            options.enableNetworkBreadcrumbs = opts.enableNetworkBreadcrumbs
             options.enableLogs = opts.enableLogs
             options.enableMetrics = opts.enableMetrics
             if let targets = opts.tracePropagationTargets { options.tracePropagationTargets = targets }
@@ -667,6 +668,11 @@ public class SkipSentryOptions {
     public var attachStacktrace: Bool = true
     /// Whether to detect and report app hangs (iOS only).
     public var enableAppHangTracking: Bool = true
+    /// Whether to record a breadcrumb for each HTTP request (iOS only). Each breadcrumb carries the request URL,
+    /// so turn this off when your URLs can contain keys, tokens or other identifiers: ``beforeSend`` can only drop
+    /// a whole event, not remove a breadcrumb from it. Mirrors iOS `Options.enableNetworkBreadcrumbs`. Android's SDK
+    /// records no request breadcrumbs unless the app installs Sentry's OkHttp integration, so it has no effect there.
+    public var enableNetworkBreadcrumbs: Bool = true
     /// Whether to report tombstones captured before the SDK was initialized (Android 12+ only).
     public var isReportHistoricalTombstones: Bool = true
     /// Whether to send structured logs (``SkipSentry/log(_:level:attributes:)``) to Sentry.
