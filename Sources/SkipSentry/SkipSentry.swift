@@ -1,5 +1,4 @@
 // Copyright 2023–2026 Skip
-// SPDX-License-Identifier: MPL-2.0
 
 // Sentry Cocoa is a binary xcframework with no Android slice, so on a native
 // (non-transpiled) Android build there is nothing to wrap and the module is empty.
