@@ -270,7 +270,7 @@ All methods are static on the `SkipSentry` class.
 > The following features are **not yet available** in the Skip cross-platform wrapper:
 > - **Performance monitoring** (transactions, spans) — Use the native Sentry SDKs directly via `#if SKIP` / `#if !SKIP` blocks for transaction tracing.
 > - **Attachments** — File attachments on events are not wrapped.
-> - **User feedback dialog** — The Sentry feedback widget is not wrapped.
+> - **User feedback dialog** — The Sentry feedback widget is not wrapped. The feedback *API* is: see `captureFeedback`.
 > - **Session replay** — Available on each platform's native SDK but not wrapped.
 > - **Profiling** — Not wrapped.
 > - **Metrics** — The custom metrics API is not wrapped.
