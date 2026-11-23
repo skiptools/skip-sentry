@@ -490,6 +490,42 @@ public class SkipSentry {
         #endif
     }
 
+    // MARK: User Feedback
+
+    /// Send user feedback to Sentry (the User Feedback feature) through the SDK's own API.
+    ///
+    /// - Parameters:
+    ///   - message: What the user wrote.
+    ///   - name: Optional reporter name. Pass `nil` to send none.
+    ///   - email: Optional reporter email. Pass `nil` to send none.
+    ///   - associatedEventId: Optional event id (32 hex characters) to link the feedback to.
+    public static func captureFeedback(
+        message: String,
+        name: String? = nil,
+        email: String? = nil,
+        associatedEventId: String? = nil
+    ) {
+        #if !SKIP
+        var eventId: SentryId?
+        if let associatedEventId { eventId = SentryId(uuidString: associatedEventId) }
+        let feedback = SentryFeedback(
+            message: message,
+            name: name,
+            email: email,
+            source: .custom,
+            associatedEventId: eventId,
+            attachments: nil
+        )
+        SentrySDK.capture(feedback: feedback)
+        #else
+        // SKIP INSERT: val fb = io.sentry.protocol.Feedback(message)
+        // SKIP INSERT: if (name != null) { fb.name = name }
+        // SKIP INSERT: if (email != null) { fb.contactEmail = email }
+        // SKIP INSERT: if (associatedEventId != null) { fb.associatedEventId = io.sentry.protocol.SentryId(associatedEventId) }
+        // SKIP INSERT: io.sentry.Sentry.feedback().capture(fb)
+        #endif
+    }
+
     // MARK: Crash Detection
 
     /// Whether the app crashed during the last run.
