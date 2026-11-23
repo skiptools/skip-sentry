@@ -521,7 +521,7 @@ public class SkipSentry {
         // SKIP INSERT: val fb = io.sentry.protocol.Feedback(message)
         // SKIP INSERT: if (name != null) { fb.name = name }
         // SKIP INSERT: if (email != null) { fb.contactEmail = email }
-        // SKIP INSERT: if (associatedEventId != null) { fb.associatedEventId = io.sentry.protocol.SentryId(associatedEventId) }
+        // SKIP INSERT: if (associatedEventId != null) { fb.setAssociatedEventId(io.sentry.protocol.SentryId(associatedEventId)) }
         // SKIP INSERT: io.sentry.Sentry.feedback().capture(fb)
         #endif
     }
